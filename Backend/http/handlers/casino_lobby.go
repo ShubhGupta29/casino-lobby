@@ -153,7 +153,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	})
 
-	response.WriteJSONResponse(w, http.StatusOK, models.LoginResponse{Token: token})
+	response.WriteJSONResponse(w, http.StatusOK, models.LoginResponse{Token: token, UserID: userAuth.UserID})
 }
 
 // Logout handles POST /lobby/v1/logout

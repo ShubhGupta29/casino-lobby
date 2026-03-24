@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Lobby</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        header {
+            background-color: #1e1e1e;
+            color: #ecf0f1;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .header-title {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .auth-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .auth-container input {
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background-color: #2c2c2c;
+            color: #fff;
+        }
+        .btn {
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn-logout {
+            background-color: #e74c3c;
+        }
+        .btn-logout:hover {
+            background-color: #c0392b;
+        }
+        #message-box {
+            padding: 15px;
+            text-align: center;
+            display: none;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .operator-panel {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 15px;
+        }
+        .card {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #ffffff;
+        }
+        .card input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: #2c2c2c;
+            color: #fff;
+        }
+        pre {
+            background: #000;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .success { background-color: #1b5e20; color: #c8e6c9; }
+        .error { background-color: #b71c1c; color: #ffcdd2; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 class="header-title">Casino Lobby</h1>
+        
+        <!-- Login Form -->
+        <div id="login-section" class="auth-container">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button id="login-btn" class="btn">Login</button>
+        </div>
+
+        <!-- Logged In User Info -->
+        <div id="user-section" class="auth-container" style="display: none;">
+            <span id="user-display"></span>
+            <button id="logout-btn" class="btn btn-logout">Logout</button>
+        </div>
+    </header>
+
+    <div id="message-box"></div>
+
+    <div class="operator-panel">
+        <h2>Operator API Testing Dashboard</h2>
+        <div class="grid">
+            <div class="card">
+                <h3>Global Configuration</h3>
+                <input type="text" id="partner-id" placeholder="Partner ID" value="partner_123">
+                <input type="text" id="op-token" placeholder="Auth Token" value="test_token_abc">
+                <input type="text" id="game-id" placeholder="Game ID" value="game_001">
+                <input type="text" id="currency" placeholder="Currency" value="EUR">
+            </div>
+            <div class="card">
+                <h3>Session Info</h3>
+                <p><strong>User ID:</strong> <span id="sess-user-id">Not Authenticated</span></p>
+                <p><strong>Session ID:</strong> <span id="sess-session-id">Not Authenticated</span></p>
+                <p><strong>Balance:</strong> <span id="sess-balance">0.00</span></p>
+            </div>
+        </div>
+
+        <div class="grid" style="margin-top: 15px;">
+            <div class="card">
+                <h3>Authenticate</h3>
+                <button id="btn-auth" class="btn">Start Session</button>
+            </div>
+            <div class="card">
+                <h3>Balance</h3>
+                <button id="btn-balance" class="btn">Fetch Balance</button>
+            </div>
+            <div class="card">
+                <h3>Debit</h3>
+                <input type="number" id="debit-amount" placeholder="Amount" value="10.00">
+                <button id="btn-debit" class="btn">Debit Balance</button>
+            </div>
+            <div class="card">
+                <h3>Credit</h3>
+                <input type="number" id="credit-amount" placeholder="Amount" value="20.00">
+                <button id="btn-credit" class="btn">Credit Balance</button>
+            </div>
+            <div class="card">
+                <h3>Rollback</h3>
+                <input type="number" id="rollback-amount" placeholder="Amount" value="10.00">
+                <input type="text" id="rollback-ref-tx" placeholder="Ref Tx ID">
+                <button id="btn-rollback" class="btn">Rollback Tx</button>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 15px;">
+            <h3>Last API Response</h3>
+            <pre id="api-response">Awaiting actions...</pre>
+        </div>
+    </div>
+
+    <script>
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginSection = document.getElementById('login-section');
+        const userSection = document.getElementById('user-section');
+        const userDisplay = document.getElementById('user-display');
+        const messageBox = document.getElementById('message-box');
+
+        const API_BASE = 'http://localhost:8080/lobby/v1';
+        const OPERATOR_API_BASE = 'http://localhost:8080/generic/v1/operator';
+
+        function showMessage(msg, isError = false) {
+            messageBox.textContent = msg;
+            messageBox.className = isError ? 'error' : 'success';
+            messageBox.style.display = 'block';
+            setTimeout(() => { messageBox.style.display = 'none'; }, 4000);
+        }
+
+        loginBtn.addEventListener('click', async () => {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                showMessage('Please enter both email and password.', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // Allows the browser to store the HttpOnly cookie safely
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('Login successful!');
+                    loginSection.style.display = 'none';
+                    userSection.style.display = 'flex';
+                    userDisplay.textContent = `Welcome, ${email}`;
+                    document.getElementById('op-token').value = data.token; // Pass real token to operator panel
+                } else {
+                    showMessage(data.error || 'Login failed.', true);
+                }
+            } catch (error) {
+                showMessage('Network error. Is the server running?', true);
+            }
+        });
+
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${API_BASE}/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    showMessage('Logged out successfully.');
+                    userSection.style.display = 'none';
+                    loginSection.style.display = 'flex';
+                    emailInput.value = '';
+                    passwordInput.value = '';
+                    document.getElementById('op-token').value = 'test_token_abc'; // Reset token
+                }
+            } catch (error) {
+                showMessage('Error during logout.', true);
+            }
+        });
+
+        // --- OPERATOR API LOGIC ---
+
+        // Generates an RFC4122 version 4 compliant UUID
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        let currentSession = {
+            userId: '',
+            sessionId: ''
+        };
+
+        const getPartnerId = () => document.getElementById('partner-id').value || 'partner_123';
+        const getToken = () => document.getElementById('op-token').value || 'token_123';
+        const getGameId = () => document.getElementById('game-id').value || 'game_001';
+        const getCurrency = () => document.getElementById('currency').value || 'EUR';
+
+        function updateSessionDisplay(userId, sessionId, balance) {
+            if (userId) currentSession.userId = userId;
+            if (sessionId) currentSession.sessionId = sessionId;
+            document.getElementById('sess-user-id').textContent = currentSession.userId || 'Not Authenticated';
+            document.getElementById('sess-session-id').textContent = currentSession.sessionId || 'Not Authenticated';
+            if (balance !== undefined) {
+                document.getElementById('sess-balance').textContent = balance;
+            }
+        }
+
+        async function operatorApiCall(endpoint, payload) {
+            const partnerId = getPartnerId();
+            const url = `${OPERATOR_API_BASE}/${endpoint}/${partnerId}`;
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                document.getElementById('api-response').textContent = JSON.stringify(data, null, 2);
+                return { ok: response.ok, data };
+            } catch (error) {
+                document.getElementById('api-response').textContent = `Request failed: ${error.message}`;
+                return { ok: false, data: null };
+            }
+        }
+
+        function validateSession() {
+            if (!currentSession.userId || !currentSession.sessionId) {
+                showMessage('Please Authenticate first to establish a session.', true);
+                return false;
+            }
+            return true;
+        }
+
+        document.getElementById('btn-auth').addEventListener('click', async () => {
+            const payload = {
+                token: getToken(),
+                request_id: generateUUID()
+            };
+            const { ok, data } = await operatorApiCall('authenticate', payload);
+            if (ok && data.status === 'OK') {
+                updateSessionDisplay(data.user_id, data.session_id, data.balance);
+                showMessage('Operator Authentication Successful.');
+            }
+        });
+
+        document.getElementById('btn-balance').addEventListener('click', async () => {
+            if (!validateSession()) return;
+            const payload = {
+                user_id: currentSession.userId,
+                session_id: currentSession.sessionId,
+                game_id: getGameId(),
+                request_id: generateUUID()
+            };
+            const { ok, data } = await operatorApiCall('balance', payload);
+            if (ok && data.status === 'OK') updateSessionDisplay(null, null, data.balance);
+        });
+
+        document.getElementById('btn-debit').addEventListener('click', async () => {
+            if (!validateSession()) return;
+            const payload = {
+                session_id: currentSession.sessionId,
+                user_id: currentSession.userId,
+                transaction_id: generateUUID(),
+                amount: parseFloat(document.getElementById('debit-amount').value) || 0,
+                game_id: getGameId(),
+                round: generateUUID(),
+                round_closed: false,
+                currency: getCurrency(),
+                request_id: generateUUID()
+            };
+            const { ok, data } = await operatorApiCall('debit', payload);
+            if (ok && data.status === 'OK') {
+                updateSessionDisplay(null, null, data.balance);
+                document.getElementById('rollback-ref-tx').value = data.transaction_id;
+            }
+        });
+
+        document.getElementById('btn-credit').addEventListener('click', async () => {
+            if (!validateSession()) return;
+            const payload = {
+                session_id: currentSession.sessionId,
+                user_id: currentSession.userId,
+                transaction_id: generateUUID(),
+                amount: parseFloat(document.getElementById('credit-amount').value) || 0,
+                game_id: getGameId(),
+                round: generateUUID(),
+                round_closed: true,
+                currency: getCurrency(),
+                request_id: generateUUID()
+            };
+            const { ok, data } = await operatorApiCall('credit', payload);
+            if (ok && data.status === 'OK') {
+                updateSessionDisplay(null, null, data.balance);
+                document.getElementById('rollback-ref-tx').value = data.transaction_id;
+            }
+        });
+
+        document.getElementById('btn-rollback').addEventListener('click', async () => {
+            if (!validateSession()) return;
+            const refTxId = document.getElementById('rollback-ref-tx').value;
+            if (!refTxId) {
+                showMessage('A Reference Transaction ID is required for rollback.', true);
+                return;
+            }
+            const payload = {
+                transaction_id: generateUUID(),
+                user_id: currentSession.userId,
+                amount: parseFloat(document.getElementById('rollback-amount').value) || 0,
+                game_id: getGameId(),
+                reference_transaction_id: refTxId,
+                round: generateUUID(),
+                round_closed: true,
+                session_id: currentSession.sessionId,
+                request_id: generateUUID()
+            };
+            const { ok, data } = await operatorApiCall('rollback', payload);
+            if (ok && data.status === 'OK') updateSessionDisplay(null, null, data.balance);
+        });
+    </script>
+</body>
+</html>

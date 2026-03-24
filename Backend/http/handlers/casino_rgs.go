@@ -47,13 +47,17 @@ func Authenticate(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Mock verify identity by treating the token as a pseudo user_id
-	userID := "usr_" + req.Token
+	// Validate the JWT token to extract the real user_id
+	userID, err := ValidateToken(req.Token)
+	if err != nil {
+		response.GeneralErrorResponse(w, http.StatusUnauthorized, "invalid or expired token")
+		return
+	}
 	sessionID := "sess_" + req.RequestID
 
 	walletCol := db.GetCollection("wallet")
 	var wallet models.Wallet
-	err := walletCol.FindOne(ctx, bson.M{"user_id": userID}).Decode(&wallet)
+	err = walletCol.FindOne(ctx, bson.M{"user_id": userID}).Decode(&wallet)
 	if err == mongo.ErrNoDocuments {
 		wallet = models.Wallet{
 			UserID:    userID,
